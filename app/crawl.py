@@ -2,6 +2,7 @@ import os
 import time
 import datetime
 import requests
+from requests.exceptions import RequestException
 from bs4 import BeautifulSoup
 from .models import Page, Link, database
 
@@ -20,15 +21,20 @@ def crawl_page(url):
         print
     else:
         crawled = True
-        print('Crawling {}'.format(url))
-        resp = requests.get(url)
 
         if not page:
-            page = Page.create(url=url, content=resp.text, status_code=resp.status_code)
+            page = Page.create(url=url, content='', status_code=0)
 
-        # update last updated
-        page.status_code = resp.status_code
-        page.content = resp.text
+        print('Crawling {}'.format(url))
+        try:
+            resp = requests.get(url, timeout=5)
+        except RequestException as e:
+            page.status_code = 490
+            page.content = str(e)
+        else:
+            page.status_code = resp.status_code
+            page.content = resp.text
+
         page.first_visited = datetime.datetime.utcnow()
         page.last_visited = datetime.datetime.utcnow()
         page.save()
