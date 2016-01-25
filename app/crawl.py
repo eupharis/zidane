@@ -1,3 +1,4 @@
+import os
 import time
 import datetime
 import requests
@@ -9,6 +10,9 @@ START_URL = 'http://www.cavesofnarshe.com/'
 
 
 def crawl_page(url):
+    if os.stat('corpus.db').st_size > 2147483648:
+        raise NotImplementedError('DB getting too big for this machine! Abort!')
+
     page = Page.select().where(Page.url == url).first()
     if page and page.content != 'PLACEHOLDER':
         crawled = False
@@ -63,9 +67,19 @@ def go():
     page, _ = crawl_page(START_URL)
 
     hrefs = extract_hrefs(page.content)
-    links = create_links(START_URL, hrefs)
+    create_links(START_URL, hrefs)
 
-    for link in links:
-        _, crawled = crawl_page(link.to_page.url)
-        if crawled:
-            time.sleep(1)
+    while True:
+        print('---------')
+        print('new loop!')
+        print('---------')
+        print
+        time.sleep(1)
+        for page in Page.select().where(Page.content == 'PLACEHOLDER'):
+            page, crawled = crawl_page(page.url)
+
+            hrefs = extract_hrefs(page.content)
+            create_links(page.url, hrefs)
+
+            if crawled:
+                time.sleep(1)
