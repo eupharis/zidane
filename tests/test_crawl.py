@@ -41,7 +41,7 @@ class T(unittest.TestCase):
         requests.get = get_mock
 
         content = 'foobar'
-        page = Page.create(url=link1, content=content)
+        page = Page.create(url=link1, content=content, status_code=200)
 
         crawled_page, crawled = crawl_page(link1)
 

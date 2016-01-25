@@ -3,18 +3,18 @@ import time
 import datetime
 import requests
 from bs4 import BeautifulSoup
-from .models import Page, Link
+from .models import Page, Link, database
 
 
 START_URL = 'http://www.cavesofnarshe.com/'
 
 
 def crawl_page(url):
-    if os.stat('corpus.db').st_size > 2147483648:
+    if database.database == 'corpus.db' and os.stat('corpus.db').st_size > 2147483648:
         raise NotImplementedError('DB getting too big for this machine! Abort!')
 
     page = Page.select().where(Page.url == url).first()
-    if page and page.content != 'PLACEHOLDER':
+    if page and page.status_code != 0:
         crawled = False
         print('Already crawled {}, skipping')
         print
@@ -22,11 +22,12 @@ def crawl_page(url):
         crawled = True
         print('Crawling {}'.format(url))
         resp = requests.get(url)
-        assert resp.status_code == 200
+
         if not page:
-            page = Page.create(url=url, content=resp.text)
+            page = Page.create(url=url, content=resp.text, status_code=resp.status_code)
 
         # update last updated
+        page.status_code = resp.status_code
         page.content = resp.text
         page.first_visited = datetime.datetime.utcnow()
         page.last_visited = datetime.datetime.utcnow()
@@ -51,7 +52,7 @@ def extract_hrefs(content):
 
 def create_links(from_url, to_urls):
     links = []
-    defaults = {'content': 'PLACEHOLDER'}
+    defaults = {'content': '', 'status_code': 0}
     from_page, _ = Page.get_or_create(url=from_url, defaults=defaults)
 
     for to_url in to_urls:
@@ -75,7 +76,7 @@ def go():
         print('---------')
         print
         time.sleep(1)
-        for page in Page.select().where(Page.content == 'PLACEHOLDER'):
+        for page in Page.select().where(Page.status_code == 0):
             page, crawled = crawl_page(page.url)
 
             hrefs = extract_hrefs(page.content)

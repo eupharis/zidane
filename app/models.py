@@ -1,5 +1,5 @@
 import datetime
-from peewee import (SqliteDatabase, Model, DateTimeField, CharField, TextField, ForeignKeyField)
+from peewee import (SqliteDatabase, Model, DateTimeField, CharField, TextField, ForeignKeyField, IntegerField)
 
 database = SqliteDatabase(None)
 
@@ -12,7 +12,8 @@ class BaseModel(Model):
 class Page(BaseModel):
     url = CharField(unique=True)
     content = TextField()
-    first_visited = DateTimeField(default=datetime.datetime.utcnow)  # actually means "first_seen"
+    status_code = IntegerField()
+    first_visited = DateTimeField(default=datetime.datetime.utcnow)
     last_visited = DateTimeField(default=datetime.datetime.utcnow)
 
 

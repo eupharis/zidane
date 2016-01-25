@@ -10,13 +10,13 @@ class T(unittest.TestCase):
 
     def test_page(self):
         now = datetime.datetime.utcnow()
-        page = Page.create(url='http://www.example.com/foo', content='hi world')
+        page = Page.create(url='http://www.example.com/foo', content='hi world', status_code=200)
         self.assertTrue(page.first_visited > now)
 
     def test_page_twice(self):
         # make sure database is cleared out between tests
         url = 'http://www.example.com/foo'
-        Page.create(url=url, content='hi world')
+        Page.create(url=url, content='hi world', status_code=200)
         self.assertEqual(Page.select().count(), 1)
 
-        self.assertRaises(IntegrityError, Page.create, url=url, content='hi world')
+        self.assertRaises(IntegrityError, Page.create, url=url, content='hi world', status_code=200)
