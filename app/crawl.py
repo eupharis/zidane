@@ -30,14 +30,18 @@ def add_page_info_to_page(page):
         page.status_code = resp.status_code
 
     if page.status_code == 301:
-        # this is permanent redirect
+        # permanent redirect
         redirect_url = resp.headers.get('location', '')
         page.content = redirect_url
 
         defaults = {'content': '', 'status_code': 0}
-        Page.get_or_create(
+        to_page, _ = Page.get_or_create(
             url=redirect_url,
             defaults=defaults)
+
+        Link.get_or_create(
+            from_page=page,
+            to_page=to_page)
 
     if page.status_code != 200:
         # this is a redirect or something
@@ -49,13 +53,20 @@ def add_page_info_to_page(page):
         content_type = content_type.split(';')[0]  # get rid of charset
         page.content_type = content_type.strip()
 
-    if content_type in CRAWLABLE_CONTENT_TYPES:
-        try:
-            resp = requests.get(page.url, timeout=5, allow_redirects=True)
-            page.content = resp.text
-        except RequestException as e:
-            page.status_code = 490
-            page.content = str(e)
+    if content_type not in CRAWLABLE_CONTENT_TYPES:
+        return
+
+    content_length = resp.headers.get('content-length')
+    if content_length and int(content_length) > 10485760:
+        # skip pages > 10 MiB in length
+        return
+
+    try:
+        resp = requests.get(page.url, timeout=5, allow_redirects=True)
+        page.content = resp.text
+    except RequestException as e:
+        page.status_code = 490
+        page.content = str(e)
 
 
 def crawl_page(url):
@@ -64,7 +75,7 @@ def crawl_page(url):
     page = Page.select().where(Page.url == url).first()
     if page and page.status_code != 0:
         crawled = False
-        print('Already crawled {}, skipping'.format(page.url))
+        # print('Already crawled {}, skipping'.format(page.url))
         return page, crawled
 
     crawled = True
@@ -110,19 +121,15 @@ def create_links(from_url, to_urls):
 
 
 def go():
-    page, _ = crawl_page(START_URL)
-
-    hrefs = extract_hrefs(page.content)
-    create_links(START_URL, hrefs)
+    defaults = {'status_code': 0, 'content': ''}
+    Page.get_or_create(url=START_URL, defaults=defaults)
 
     while True:
-        print('---------')
-        print('new loop!')
-        print('---------')
-        print
-        time.sleep(1)
+        time.sleep(0.1)
         for page in Page.select().where(Page.status_code == 0):
             page, crawled = crawl_page(page.url)
 
             hrefs = extract_hrefs(page.content)
             create_links(page.url, hrefs)
+            if crawled:
+                time.sleep(0.1)
