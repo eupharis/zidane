@@ -12,6 +12,7 @@ class BaseModel(Model):
 class Page(BaseModel):
     url = CharField(unique=True)
     content = TextField()
+    content_type = CharField(max_length=128, null=True)
     status_code = IntegerField()
     first_visited = DateTimeField(default=datetime.datetime.utcnow)
     last_visited = DateTimeField(default=datetime.datetime.utcnow)

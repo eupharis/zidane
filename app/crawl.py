@@ -8,40 +8,79 @@ from .models import Page, Link, database
 
 
 START_URL = 'http://www.cavesofnarshe.com/'
+FOUR_GIGABYTES = 4294967296
+CRAWLABLE_CONTENT_TYPES = set(['text/html', 'text/plain'])
+
+
+def blow_up_when_db_too_big(db_name):
+    if db_name == ':memory:':
+        # in memory db used for tests, assume it's good
+        return
+    elif os.stat(db_name).st_size > FOUR_GIGABYTES:
+        raise NotImplementedError('DB getting too big for this machine! Abort!')
+
+
+def add_page_info_to_page(page):
+    try:
+        resp = requests.head(page.url, timeout=5, allow_redirects=False)
+    except RequestException as e:
+        page.status_code = 490
+        page.content = str(e)
+    else:
+        page.status_code = resp.status_code
+
+    if page.status_code == 301:
+        # this is permanent redirect
+        redirect_url = resp.headers.get('location', '')
+        page.content = redirect_url
+
+        defaults = {'content': '', 'status_code': 0}
+        Page.get_or_create(
+            url=redirect_url,
+            defaults=defaults)
+
+    if page.status_code != 200:
+        # this is a redirect or something
+        print('Received status code {} for {}, skipping'.format(page.status_code, page.content))
+        return
+
+    content_type = resp.headers.get('content-type')
+    if content_type:
+        content_type = content_type.split(';')[0]  # get rid of charset
+        page.content_type = content_type.strip()
+
+    if content_type in CRAWLABLE_CONTENT_TYPES:
+        try:
+            resp = requests.get(page.url, timeout=5, allow_redirects=True)
+            page.content = resp.text
+        except RequestException as e:
+            page.status_code = 490
+            page.content = str(e)
 
 
 def crawl_page(url):
-    if database.database == 'corpus.db' and os.stat('corpus.db').st_size > 2147483648:
-        raise NotImplementedError('DB getting too big for this machine! Abort!')
+    blow_up_when_db_too_big(database.database)
 
     page = Page.select().where(Page.url == url).first()
     if page and page.status_code != 0:
         crawled = False
-        print('Already crawled {}, skipping')
-        print
-    else:
-        crawled = True
+        print('Already crawled {}, skipping'.format(page.url))
+        return page, crawled
 
-        if not page:
-            page = Page.create(url=url, content='', status_code=0)
+    crawled = True
+    if not page:
+        page = Page.create(url=url, content='', status_code=0)
 
-        print('Crawling {}'.format(url))
-        try:
-            resp = requests.get(url, timeout=5)
-        except RequestException as e:
-            page.status_code = 490
-            page.content = str(e)
-        else:
-            page.status_code = resp.status_code
-            page.content = resp.text
+    # set date to right before crawling
+    page.first_visited = datetime.datetime.utcnow()
+    page.last_visited = datetime.datetime.utcnow()
 
-        page.first_visited = datetime.datetime.utcnow()
-        page.last_visited = datetime.datetime.utcnow()
-        page.save()
+    print('Crawling {}'.format(url))
+    add_page_info_to_page(page)
+    page.save()
 
-        print('Crawling finished!')
-        print
-
+    print('Crawling finished!')
+    print
     return page, crawled
 
 
@@ -87,6 +126,3 @@ def go():
 
             hrefs = extract_hrefs(page.content)
             create_links(page.url, hrefs)
-
-            if crawled:
-                time.sleep(1)
