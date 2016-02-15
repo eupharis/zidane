@@ -1,3 +1,4 @@
 corpus.db
 tags
 __pycache__/
+*.pyc

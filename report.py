@@ -30,11 +30,10 @@ if __name__ == "__main__":
     corpus_size = os.stat('corpus.db').st_size
     corpus_size = sizeof_fmt(corpus_size)
 
-    print('pages: {}'.format(page_count))
     print('crawled pages: {}'.format(crawled_count))
     print('redirect pages: {}'.format(redirect_count))
     print('pages to crawl: {}'.format(to_crawl_count))
-    print('other pages: {}'.format(other_count))
+    print('other pages: {}'.format(other_count))  # could include temporary redirects, server errors, etc.
     print('links: {}'.format(link_count))
     print('db size: {}'.format(corpus_size))
     print
