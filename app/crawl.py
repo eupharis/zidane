@@ -62,7 +62,7 @@ def add_page_info_to_page(page):
         return
 
     try:
-        resp = requests.get(page.url, timeout=5, allow_redirects=True)
+        resp = requests.get(page.url, timeout=5, allow_redirects=False)
         page.content = resp.text
     except RequestException as e:
         page.status_code = 490
