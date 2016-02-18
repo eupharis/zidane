@@ -1,6 +1,10 @@
 # Zidane: Simple Web Crawler
 
-This is a super simple web crawler.
+A single threaded python web crawler built on top of:
+
+* [requests](http://docs.python-requests.org/en/master/)
+* [sqlite](https://www.sqlite.org/about.html)
+* [peewee](http://docs.peewee-orm.com/en/latest/)
 
 To install:
 
