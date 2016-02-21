@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from .models import Page, Link, database
 
 
-START_URL = 'http://news.ycombinator.com'
+START_URL = 'https://news.ycombinator.com'
 FOUR_GIGABYTES = 4294967296
 CRAWLABLE_CONTENT_TYPES = set(['text/html', 'text/plain'])
 
